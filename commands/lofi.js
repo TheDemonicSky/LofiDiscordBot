@@ -5,14 +5,13 @@ const {
   createAudioPlayer,
   createAudioResource,
   joinVoiceChannel,
-  generateDependencyReport,
 } = require("@discordjs/voice");
 const musicList = [
-  "https://www.youtube.com/watch?v=Mu3BfD6wmPg&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=1&t=14s",
+  "https://www.youtube.com/watch?v=Mu3BfD6wmPg&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=1",
   "https://www.youtube.com/watch?v=guhAfOxt5gg&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=2",
   "https://www.youtube.com/watch?v=XoX6zS5-jOY&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=3",
   "https://www.youtube.com/watch?v=doxeMNXYFqk&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=4",
-  "https://www.youtube.com/watch?v=kHI9hnC-pnI&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=5&t=14s",
+  "https://www.youtube.com/watch?v=kHI9hnC-pnI&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=5",
   "https://www.youtube.com/watch?v=RY89j1qdKvo&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=6",
   "https://www.youtube.com/watch?v=pIOZVb97dSk&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=7",
   "https://www.youtube.com/watch?v=eEXEEuSLjEo&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=8",
@@ -258,42 +257,46 @@ module.exports = {
     .setName("lofi")
     .setDescription("Will play lofi hip hop beats to study/relax to"),
   async execute(interaction) {
-    await interaction.reply("Playing lofi hip hop beats to study/relax to");
+    const voiceChannel = interaction.member.voice.channelId;
+    const randomNumber = Math.floor(Math.random() * 242 + 1);
 
-    console.log(generateDependencyReport());
+    if (voiceChannel) {
+      await interaction.reply("Playing lofi hip hop beats to study/relax to");
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel,
+        guildId: interaction.guildId,
+        adapterCreator: interaction.guild.voiceAdapterCreator,
+      });
 
-    const connection = joinVoiceChannel({
-      channelId: "971661298469314580",
-      guildId: interaction.guildId,
-      adapterCreator: interaction.guild.voiceAdapterCreator,
-    });
+      const stream = ytdl(musicList[randomNumber], {
+        filter: "audio",
+      });
+      const resource = createAudioResource(stream, {
+        inputType: StreamType.Arbitrary,
+        mute: false,
+        self_mute: false,
+        deafen: false,
+        self_deafen: false,
+      });
+      const player = createAudioPlayer();
 
-    const stream = ytdl(musicList[Math.floor(Math.random() * 242 + 1)], {
-      filter: "audio",
-    });
-    const resource = createAudioResource(stream, {
-      inputType: StreamType.Arbitrary,
-      mute: false,
-      self_mute: false,
-      deafen: false,
-      self_deafen: false,
-    });
-    const player = createAudioPlayer();
+      player.play(resource);
+      connection.subscribe(player);
 
-    player.play(resource);
-    connection.subscribe(player);
+      /*       connection.on("stateChange", (oldState, newState) => {
+        console.log(
+          `Connection transitioned from ${oldState.status} to ${newState.status}`
+        );
+      });
 
-    connection.on("stateChange", (oldState, newState) => {
-      console.log(
-        `Connection transitioned from ${oldState.status} to ${newState.status}`
-      );
-    });
-
-    player.on("stateChange", (oldState, newState) => {
-      console.log(
-        `Audio player transitioned from ${oldState.status} to ${newState.status}`
-      );
-    });
+      player.on("stateChange", (oldState, newState) => {
+        console.log(
+          `Audio player transitioned from ${oldState.status} to ${newState.status}`
+        );
+      }); */
+    } else {
+      await interaction.reply("You aren't connected to a voice channel.");
+    }
 
     /* 
     let musicLink = "https://www.youtube.com/watch?v=5qap5aO4i9A";
