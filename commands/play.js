@@ -30,6 +30,7 @@ module.exports = {
         const stream = ytdl(url, {
           filter: "audio",
         });
+
         const resource = createAudioResource(stream, {
           inputType: StreamType.Arbitrary,
           mute: false,
@@ -40,6 +41,7 @@ module.exports = {
         const player = createAudioPlayer();
 
         player.play(resource);
+        player.on("error", (error) => console.error(error));
         connection.subscribe(player);
 
         const info = await ytdl.getBasicInfo(url);
