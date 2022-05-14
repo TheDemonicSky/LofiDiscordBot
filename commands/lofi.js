@@ -5,6 +5,8 @@ const {
   createAudioPlayer,
   createAudioResource,
   joinVoiceChannel,
+  VoiceConnectionStatus,
+  entersState,
 } = require("@discordjs/voice");
 const musicList = [
   "https://www.youtube.com/watch?v=Mu3BfD6wmPg&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=1",
@@ -250,7 +252,6 @@ const musicList = [
   "https://www.youtube.com/watch?v=fR0ZlSDUKCg&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=241",
   "https://www.youtube.com/watch?v=NHh6kMiZUA4&list=PL6NdkXsPL07IOu1AZ2Y2lGNYfjDStyT6O&index=242",
 ];
-/* const { MessageEmbed } = require("discord.js"); */
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -283,7 +284,7 @@ module.exports = {
       player.play(resource);
       connection.subscribe(player);
 
-      /*       connection.on("stateChange", (oldState, newState) => {
+      connection.on("stateChange", (oldState, newState) => {
         console.log(
           `Connection transitioned from ${oldState.status} to ${newState.status}`
         );
@@ -293,77 +294,23 @@ module.exports = {
         console.log(
           `Audio player transitioned from ${oldState.status} to ${newState.status}`
         );
-      }); */
+      });
+
+      connection.on(VoiceConnectionStatus.Disconnected, async () => {
+        try {
+          await Promise.race([
+            entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+            entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+          ]);
+          // Seems to be reconnecting to a new channel - ignore disconnect
+        } catch (error) {
+          // Seems to be a real disconnect which SHOULDN'T be recovered from
+          console.error(error);
+          connection.destroy();
+        }
+      });
     } else {
       await interaction.reply("You aren't connected to a voice channel.");
     }
-
-    /* 
-    let musicLink = "https://www.youtube.com/watch?v=5qap5aO4i9A";
-
-    let voiceChannel = message.member.voice.channel;
-
-    if (voiceChannel) {
-      let urlValidity = ytdl.validateURL(musicLink);
-      if (urlValidity) {
-        const connection = await voiceChannel.joinVoiceChannel();
-        let dispatcher = connection.play(
-          ytdl(musicLink, { filter: "audioonly" })
-        );
-
-        let deletedMessage = await message.delete();
-        let info = await ytdl.getBasicInfo(musicLink);
-
-        const musicPlayerEmbed = new MessageEmbed()
-          .setColor("BLUE")
-          .setTitle(info.videoDetails.title)
-          .setThumbnail(info.videoDetails.thumbnail.thumbnails[0].url);
-
-        let sentMusicPlayerEmbed = await deletedMessage.channel.send(
-          musicPlayerEmbed
-        );
-        sentMusicPlayerEmbed.react("⏹");
-        sentMusicPlayerEmbed.react("⏸");
-
-        let filter = (reaction, user) =>
-          !user.bot && user.id === message.author.id;
-        const reactionCollector =
-          sentMusicPlayerEmbed.createReactionCollector(filter);
-
-        reactionCollector.on("collect", (reaction) => {
-          if (reaction.emoji.name === "⏸") {
-            dispatcher.pause();
-            reaction.remove();
-            sentMusicPlayerEmbed.react("▶️");
-          } else if (reaction.emoji.name === "▶️") {
-            dispatcher.resume();
-            reaction.remove();
-            sentMusicPlayerEmbed.react("⏸");
-          } else if (reaction.emoji.name === "⏹") {
-            connection.disconnect();
-            sentMusicPlayerEmbed.delete();
-          } else {
-            reaction.remove();
-          }
-        });
-
-        dispatcher.on("finish", () => {
-          connection.disconnect();
-          sentMusicPlayerEmbed.delete();
-        });
-      } else {
-        message
-          .delete()
-          .then((m) =>
-            m.channel.send(
-              "Provide a valid YouTube link so that I can play some music."
-            )
-          );
-      }
-    } else {
-      message
-        .delete()
-        .then((m) => m.channel.send("You need to join a voice channel first"));
-    } */
   },
 };

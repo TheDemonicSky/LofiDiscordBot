@@ -51,43 +51,62 @@ module.exports = {
           .setTitle(info.videoDetails.title)
           .setThumbnail(info.videoDetails.thumbnails[0].url);
 
-        const sentMusicPlayerEmbed = await interaction.channel.send({
-          embeds: [musicPlayerEmbed],
-        });
-        sentMusicPlayerEmbed.react("⏹");
-        sentMusicPlayerEmbed.react("⏸");
+        interaction.channel
+          .send({ embeds: [musicPlayerEmbed] })
+          .then((sentMessage) => {
+            sentMessage.react("⏹");
+            sentMessage.react("⏸");
+            const filter = (user) => !user.bot;
+            const collector = sentMessage.createReactionCollector();
 
-        const filter = (user) => !user.bot;
-        const collector = sentMusicPlayerEmbed.createReactionCollector({
-          filter,
-        });
+            collector.on("collect", (reaction) => {
+              console.log("gay");
+              if (reaction.emoji.name === "⏸") {
+                resource.pause();
+                reaction.remove();
+                sentMessage.react("▶️");
+              } else if (reaction.emoji.name === "▶️") {
+                resource.resume();
+                reaction.remove();
+                sentMessage.react("⏸");
+              } else if (reaction.emoji.name === "⏹") {
+                connection.destroy();
+                sentMessage.delete();
+              } else {
+                reaction.remove();
+              }
+            });
 
-        testCollector = interaction.createReactionCollector({ filter });
+            connection.on("stateChange", (oldState, newState) => {
+              console.log(
+                `Connection transitioned from ${oldState.status} to ${newState.status}`
+              );
+            });
 
-        testCollector.on("collect", (reaction, user) => {
-          console.log(`Collected ${reaction.emoji.name} from ${user.tag}`);
-        });
+            player.on("stateChange", (oldState, newState) => {
+              console.log(
+                `Audio player transitioned from ${oldState.status} to ${newState.status}`
+              );
+            });
 
-        collector.on("collect", (reaction) => {
-          if (reaction.emoji.name === "⏸") {
-            resource.pause();
-            reaction.remove();
-            sentMusicPlayerEmbed.react("▶️");
-          } else if (reaction.emoji.name === "▶️") {
-            resource.resume();
-            reaction.remove();
-            sentMusicPlayerEmbed.react("⏸");
-          } else if (reaction.emoji.name === "⏹") {
+            player.on("finish", () => {
+              connection.destroy();
+              sentMessage.delete();
+            });
+          });
+
+        connection.on(VoiceConnectionStatus.Disconnected, async () => {
+          try {
+            await Promise.race([
+              entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+              entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+            ]);
+            // Seems to be reconnecting to a new channel - ignore disconnect
+          } catch (error) {
+            // Seems to be a real disconnect which SHOULDN'T be recovered from
+            console.error(error);
             connection.destroy();
-            sentMusicPlayerEmbed.delete();
-          } else {
-            reaction.remove();
           }
-        });
-
-        player.on("finish", () => {
-          connection.destroy();
-          sentMusicPlayerEmbed.delete();
         });
       } else {
         interaction.reply("Provide a valid YouTube link");
