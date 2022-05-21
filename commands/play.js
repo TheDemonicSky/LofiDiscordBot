@@ -63,6 +63,7 @@ module.exports = {
         voiceChannel: voiceChannel,
         textChannel: interaction.channel,
         connection: null,
+        sentMessage: undefined,
         songs: [],
       };
 
@@ -92,8 +93,12 @@ module.exports = {
   },
 };
 
-const videoPlayer = async (guild, song, sentMessage) => {
+const videoPlayer = async (guild, song) => {
   const songQueue = queue.get(guild.id);
+
+  if (songQueue.sentMessage !== undefined) {
+    songQueue.sentMessage.delete();
+  }
 
   if (!song) {
     songQueue.connection.destroy();
@@ -139,6 +144,7 @@ const embed = async (guild, song, player) => {
       sentMessage.react("⏹");
       sentMessage.react("⏸");
       sentMessage.react("⏭");
+      songQueue.sentMessage = sentMessage;
       const filter = (reaction, user) => {
         return !user.bot;
       };
@@ -160,14 +166,10 @@ const embed = async (guild, song, player) => {
         } else if (reaction.emoji.name === "⏭") {
           sentMessage.delete();
           songQueue.songs.shift();
-          videoPlayer(guild, songQueue.songs[0], sentMessage);
+          videoPlayer(guild, songQueue.songs[0]);
         } else {
           reaction.remove();
         }
-
-        player.on("idle", () => {
-          sentMessage.delete();
-        });
       });
     });
 };
