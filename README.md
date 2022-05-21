@@ -1,3 +1,1 @@
 # LofiDiscordBot
-
-TU3NzY4Nzc0NzA5MzA1MzU0.GXwPxV.0jfgnGYq8EfGkQpVwZbrNizSf8rWCxWpQSNuII
